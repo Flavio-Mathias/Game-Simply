@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d9f0df">
+  <title>Princesa em Missão</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #233b32;
+      --paper: #f8f5e9;
+      --leaf: #448b5e;
+      --berry: #da6555;
+      --line: #c9d8c3;
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      background: #d9f0df;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100svh;
+      margin: 0;
+      background-color: #d9f0df;
+      background-image: radial-gradient(#badbc0 0.8px, transparent 0.8px);
+      background-size: 18px 18px;
+    }
+    button { color: inherit; font: inherit; }
+    .game {
+      width: min(1080px, calc(100% - 36px));
+      min-height: 100svh;
+      margin: 0 auto;
+      padding: 19px 0 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+    .masthead, .status, .controls, .control-group { display: flex; align-items: center; }
+    .masthead { justify-content: space-between; gap: 12px; }
+    .title-lockup { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .mark {
+      width: 43px; height: 43px; flex: 0 0 43px;
+      display: grid; place-items: center;
+      border: 2px solid var(--ink); border-radius: 13px 13px 5px 5px;
+      background: #f4b966; box-shadow: 3px 3px 0 var(--ink);
+      font: 26px Georgia, serif;
+    }
+    h1 { margin: 0; font: 700 clamp(17px, 3vw, 23px)/1.08 Georgia, serif; }
+    .subtitle { margin: 4px 0 0; color: #587261; font-size: 10px; }
+    .top-actions { display: flex; gap: 8px; }
+    .icon-button {
+      width: 42px; height: 42px; padding: 0; display: grid; place-items: center;
+      border: 2px solid var(--ink); border-radius: 8px; background: var(--paper);
+      box-shadow: 2px 2px 0 var(--ink); cursor: pointer; font-size: 18px;
+      touch-action: manipulation;
+    }
+    .icon-button:active, .pad-button:active { transform: translate(2px, 2px); box-shadow: none; }
+    .status {
+      min-height: 43px; padding: 0 13px; gap: 17px;
+      border: 2px solid var(--ink); border-radius: 7px;
+      background: var(--paper); box-shadow: 3px 3px 0 var(--ink);
+      font-size: 11px; font-weight: 800;
+    }
+    .stat { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .stat-value { color: #477c55; }
+    .progress { height: 7px; flex: 1; min-width: 35px; overflow: hidden; border: 1px solid #adc4af; border-radius: 8px; background: #e3e9d8; }
+    .progress-fill { width: 0; height: 100%; background: #e6a54c; transition: width 150ms ease; }
+    .screen {
+      position: relative; width: 100%; aspect-ratio: 1.72;
+      overflow: hidden; border: 3px solid var(--ink); border-radius: 9px;
+      background: #a7d9ce; box-shadow: 5px 5px 0 var(--ink);
+      isolation: isolate;
+    }
+    canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+    .overlay {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      padding: 18px; background: #19392d99; backdrop-filter: blur(3px);
+    }
+    .overlay[hidden] { display: none; }
+    .dialog {
+      width: min(360px, 100%); padding: 22px 19px 18px; text-align: center;
+      border: 3px solid var(--ink); border-radius: 9px;
+      background: var(--paper); box-shadow: 5px 5px 0 #1e392b;
+    }
+    .dialog-icon { margin: 0 0 5px; font: 38px/1 Georgia, serif; }
+    .dialog h2 { margin: 0 0 8px; font: 700 25px/1.1 Georgia, serif; }
+    .dialog p { margin: 0 auto 16px; max-width: 28ch; color: #587261; font-size: 11px; line-height: 1.6; }
+    .play-again {
+      min-height: 43px; padding: 0 17px; border: 2px solid var(--ink);
+      border-radius: 6px; background: #f4b966; box-shadow: 2px 2px 0 var(--ink);
+      cursor: pointer; font-weight: 900; font-size: 12px;
+    }
+    .controls { justify-content: space-between; gap: 12px; }
+    .control-group { gap: 8px; }
+    .control-caption { color: #55745f; font-size: 9px; font-weight: 900; }
+    .pad-button {
+      width: 48px; height: 43px; padding: 0; display: grid; place-items: center;
+      border: 2px solid var(--ink); border-radius: 7px; background: var(--paper);
+      box-shadow: 2px 2px 0 var(--ink); cursor: pointer; font-size: 19px;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    .pad-button.jump { width: 76px; background: #f4b966; font-size: 11px; font-weight: 900; }
+    .credit { margin: 0; color: #587261; font: 11px Georgia, serif; text-align: center; }
+    @media (max-width: 560px) {
+      .game { width: calc(100% - 22px); padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom)); gap: 10px; }
+      .screen { aspect-ratio: 1.2; }
+      .status { gap: 9px; padding: 0 9px; font-size: 10px; }
+      .mark { width: 37px; height: 37px; flex-basis: 37px; font-size: 22px; }
+      .icon-button { width: 39px; height: 39px; }
+      .subtitle { max-width: 27ch; line-height: 1.4; }
+      .control-caption { display: none; }
+      .pad-button { width: 50px; height: 48px; }
+      .pad-button.jump { width: 83px; }
+      .credit { font-size: 10px; }
+    }
+    @media (max-height: 620px) and (min-width: 561px) {
+      .game { padding-top: 9px; padding-bottom: 9px; gap: 7px; }
+      .screen { aspect-ratio: 1.9; }
+      .mark { width: 35px; height: 35px; flex-basis: 35px; }
+      .status { min-height: 37px; }
+      .pad-button { height: 37px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="game" aria-label="Jogo Princesa em Missão">
+    <header class="masthead">
+      <div class="title-lockup">
+        <div class="mark" aria-hidden="true">♙</div>
+        <div>
+          <h1>Princesa em Missão</h1>
+          <p class="subtitle" id="chapter-name">O príncipe sumiu. Ela já está a caminho.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="pause-button" type="button" aria-label="Pausar" title="Pausar">Ⅱ</button>
+        <button class="icon-button" id="restart-button" type="button" aria-label="Recomeçar" title="Recomeçar">↻</button>
+      </div>
+    </header>
+
+    <div class="status" aria-label="Progresso da fase">
+      <div class="stat">FASE <span id="stage-count" class="stat-value">1 / 5</span></div>
+      <div class="stat" aria-live="polite">✿ <span id="key-count" class="stat-value">0 / 3</span></div>
+      <div class="progress" role="progressbar" aria-label="Progresso da fase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="stat" aria-label="Vidas">♥ <span id="life-count" class="stat-value">3</span></div>
+    </div>
+
+    <section class="screen" id="screen" aria-label="Fase da floresta">
+      <canvas id="game-canvas" aria-label="Princesa correndo pela floresta para salvar o príncipe"></canvas>
+      <div class="overlay" id="overlay" hidden>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+          <p class="dialog-icon" id="dialog-icon" aria-hidden="true">✿</p>
+          <h2 id="dialog-title">Uma aventura começa</h2>
+          <p id="dialog-copy">A princesa já está a caminho.</p>
+          <button class="play-again" id="play-again" type="button">Começar aventura</button>
+        </div>
+      </div>
+    </section>
+
+    <nav class="controls" aria-label="Controles do jogo">
+      <div class="control-group">
+        <span class="control-caption">MOVER</span>
+        <button class="pad-button" type="button" data-control="left" aria-label="Mover para a esquerda" title="Mover para a esquerda">←</button>
+        <button class="pad-button" type="button" data-control="right" aria-label="Mover para a direita" title="Mover para a direita">→</button>
+      </div>
+      <div class="control-group">
+        <span class="control-caption">PULAR</span>
+        <button class="pad-button jump" type="button" data-control="jump" aria-label="Pular" title="Pular">↑ PULAR</button>
+      </div>
+    </nav>
+    <p class="credit">Uma aventura de coragem, chaves de flor e decisões próprias.</p>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector('#game-canvas');
+      const ctx = canvas.getContext('2d');
+      const screen = document.querySelector('#screen');
+      const overlay = document.querySelector('#overlay');
+      const keyCount = document.querySelector('#key-count');
+      const lifeCount = document.querySelector('#life-count');
+      const progressFill = document.querySelector('#progress-fill');
+      const progressBar = document.querySelector('.progress');
+      const pauseButton = document.querySelector('#pause-button');
+      const PLAYER_WIDTH = 30;
+      const PLAYER_HEIGHT = 44;
+      const TILE_SIZE = PLAYER_HEIGHT / 2;
+      const levels = [
+        {
+          name: 'Bosque dos Começos', biome: 'forest', world: 3100, checkpoint: 1450, dragonX: null,
+          intro: 'O príncipe Theo desapareceu depois de seguir uma trilha de flores. A princesa Aurora calça as botas: desta vez, quem começa o resgate é ela.',
+          ending: 'A trilha termina numa ponte de nuvens. Do outro lado, alguém deixou uma pena azul e um bilhete: “O dragão não me levou. Estou tentando ajudá-lo.”',
+          platforms: [{ x: 270, w: 132, rise: 62 }, { x: 500, w: 105, rise: 72 }, { x: 770, w: 155, rise: 58 }, { x: 1030, w: 115, rise: 73 }, { x: 1270, w: 150, rise: 60 }, { x: 1520, w: 125, rise: 72 }, { x: 1770, w: 155, rise: 58 }, { x: 2030, w: 120, rise: 70 }, { x: 2270, w: 160, rise: 55 }, { x: 2510, w: 100, rise: 68 }],
+          thorns: [720, 945, 1345, 1690, 2005, 2380], flowers: [455, 1208, 1947],
+          enemies: [{ x: 560, min: 515, max: 650, speed: 46, type: 'moss' }, { x: 1810, min: 1740, max: 1880, speed: 55, type: 'moss' }],
+          theme: { sky: ['#a8ded5', '#e3efc7'], sun: '#ffe28c', hills: '#88bd9b', hillsAlt: '#78ae8e', trees: '#568b69', treesAlt: '#659d70', ground: '#568657', grass: '#80b466', detail: '#a6c97a' }
+        },
+        {
+          name: 'Ponte das Nuvens', biome: 'sky', world: 3000, checkpoint: 1400, dragonX: null,
+          intro: 'Theo não foi capturado: está tentando convencer o dragão de que os moradores da montanha não são seus inimigos. Aurora segue as pegadas pelo céu.',
+          ending: 'No fim da ponte, Aurora encontra uma escama brilhante. O dragão está assustado, não furioso. O próximo caminho desce até as antigas minas.',
+          platforms: [{ x: 220, w: 145, rise: 67 }, { x: 475, w: 125, rise: 55 }, { x: 715, w: 170, rise: 73 }, { x: 990, w: 130, rise: 59 }, { x: 1225, w: 150, rise: 70 }, { x: 1470, w: 140, rise: 56 }, { x: 1725, w: 165, rise: 74 }, { x: 2000, w: 125, rise: 60 }, { x: 2245, w: 175, rise: 69 }, { x: 2535, w: 120, rise: 57 }],
+          thorns: [660, 920, 1165, 1640, 1950, 2440], flowers: [410, 1090, 1890],
+          enemies: [{ x: 555, min: 500, max: 680, speed: 50, type: 'cloudling', airborne: true }, { x: 1860, min: 1770, max: 1980, speed: 62, type: 'cloudling', airborne: true }],
+          theme: { sky: ['#a7d4e7', '#f4e2c3'], sun: '#fff0b2', hills: '#91b9c3', hillsAlt: '#82aeb9', trees: '#548b8b', treesAlt: '#669c94', ground: '#547c73', grass: '#8eb780', detail: '#bdd39a' }
+        },
+        {
+          name: 'Minas de Eco', biome: 'mines', world: 3200, checkpoint: 1500, dragonX: null,
+          intro: 'As minas guardam a origem do conflito: os sinos da vila assustam o dragão sempre que tocam. Aurora procura um jeito de silenciá-los sem deixar a vila no escuro.',
+          ending: 'Um mecanismo antigo desliga os sinos. Pela primeira vez, a montanha fica em silêncio. Lá no alto, uma luz responde: Theo encontrou o covil.',
+          platforms: [{ x: 260, w: 125, rise: 58 }, { x: 495, w: 155, rise: 70 }, { x: 755, w: 130, rise: 54 }, { x: 990, w: 170, rise: 73 }, { x: 1270, w: 130, rise: 60 }, { x: 1510, w: 155, rise: 71 }, { x: 1775, w: 135, rise: 56 }, { x: 2020, w: 165, rise: 72 }, { x: 2300, w: 140, rise: 58 }, { x: 2555, w: 130, rise: 69 }],
+          thorns: [700, 925, 1200, 1690, 1960, 2470], flowers: [430, 1195, 2090],
+          enemies: [{ x: 580, min: 520, max: 690, speed: 58, type: 'bat', airborne: true }, { x: 2140, min: 2050, max: 2250, speed: 68, type: 'bat', airborne: true }],
+          theme: { sky: ['#7d958b', '#d0bc91'], sun: '#f4dda1', hills: '#708276', hillsAlt: '#66786c', trees: '#475c52', treesAlt: '#55695b', ground: '#514b3e', grass: '#b3975e', detail: '#81765a' }
+        },
+        {
+          name: 'Montanha do Vento', biome: 'mountain', world: 3100, checkpoint: 1450, dragonX: null,
+          intro: 'Com os sinos quietos, o caminho se abre. Aurora escala a montanha para conversar com o dragão antes que o medo fale mais alto outra vez.',
+          ending: 'Aurora chega ao covil. Theo está lá, são e salvo, tentando oferecer chá ao dragão. Agora só falta descobrir por que ele guarda a passagem.',
+          platforms: [{ x: 235, w: 145, rise: 73 }, { x: 485, w: 120, rise: 61 }, { x: 720, w: 165, rise: 74 }, { x: 995, w: 125, rise: 58 }, { x: 1230, w: 160, rise: 70 }, { x: 1505, w: 130, rise: 57 }, { x: 1745, w: 175, rise: 75 }, { x: 2035, w: 125, rise: 60 }, { x: 2285, w: 160, rise: 72 }, { x: 2555, w: 120, rise: 58 }],
+          thorns: [675, 925, 1185, 1680, 1970, 2470], flowers: [440, 1145, 2060],
+          enemies: [{ x: 570, min: 500, max: 690, speed: 55, type: 'goat' }, { x: 2100, min: 2020, max: 2220, speed: 70, type: 'goat' }],
+          theme: { sky: ['#b8dce2', '#f2e8d1'], sun: '#fff0cb', hills: '#a1c4c1', hillsAlt: '#8bb3b2', trees: '#527d78', treesAlt: '#68938a', ground: '#657f70', grass: '#a6bd8a', detail: '#d2d4ae' }
+        },
+        {
+          name: 'Covil do Dragão', biome: 'cave', world: 3100, checkpoint: 1450, dragonX: 2670,
+          intro: 'O dragão não protege um tesouro: protege um ovo que está prestes a nascer. Com o barulho da vila, ele só queria manter todos afastados. Aurora e Theo vão ajudar.',
+          ending: 'O ovo se abre. O dragão sorri pela primeira vez, e Theo finalmente sai da jaula. Aurora não precisou de um príncipe para salvá-la, nem o dragão de um herói para entendê-lo.',
+          platforms: [{ x: 250, w: 130, rise: 62 }, { x: 490, w: 150, rise: 73 }, { x: 755, w: 135, rise: 57 }, { x: 995, w: 160, rise: 72 }, { x: 1260, w: 130, rise: 58 }, { x: 1500, w: 160, rise: 74 }, { x: 1770, w: 140, rise: 57 }, { x: 2020, w: 160, rise: 72 }, { x: 2290, w: 140, rise: 59 }, { x: 2545, w: 120, rise: 68 }],
+          thorns: [700, 940, 1205, 1670, 1975, 2445], flowers: [430, 1160, 2070],
+          enemies: [{ x: 590, min: 515, max: 700, speed: 64, type: 'ember' }, { x: 2090, min: 2010, max: 2230, speed: 78, type: 'ember' }],
+          theme: { sky: ['#77766d', '#b17b55'], sun: '#efc275', hills: '#777362', hillsAlt: '#645d52', trees: '#4c5545', treesAlt: '#5b5e49', ground: '#514137', grass: '#99714c', detail: '#bd955f' }
+        }
+      ];
+      let stageIndex = 0;
+      let level = levels[0];
+      let world = level.world;
+      let platforms = level.platforms;
+      let thorns = level.thorns;
+      let flowers = level.flowers.map(x => ({ x, taken: false }));
+      let enemies = level.enemies.map(enemy => ({ ...enemy, direction: 1, alive: true, phase: enemy.x * 0.03 }));
+      const input = new Set();
+      let width = 960;
+      let height = 540;
+      let dpr = 1;
+      let camera = 0;
+      let lives = 3;
+      let checkpointReached = false;
+      let checkpoint = 65;
+      let collected = 0;
+      let elapsed = 0;
+      let lastTime = 0;
+      let invulnerable = 0;
+      let paused = false;
+      let ended = false;
+      let dialogAction = () => {};
+      let messageTimer = 0;
+      let message = '';
+      let particles = [];
+      const player = { x: 65, y: 0, vx: 0, vy: 0, grounded: true, facing: 1, walk: 0 };
+
+      function floorY() { return height - 56; }
+      function resetPlayer(position = checkpoint) {
+        player.x = position;
+        player.y = floorY() - PLAYER_HEIGHT;
+        player.vx = 0;
+        player.vy = 0;
+        player.grounded = true;
+        invulnerable = 1.1;
+      }
+      function resize() {
+        const rect = screen.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        width = rect.width;
+        height = rect.height;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (player.grounded) player.y = floorY() - PLAYER_HEIGHT;
+      }
+      function updateHud() {
+        document.querySelector('#stage-count').textContent = `${stageIndex + 1} / ${levels.length}`;
+        document.querySelector('#chapter-name').textContent = `Fase ${stageIndex + 1}: ${level.name}`;
+        keyCount.textContent = `${collected} / 3`;
+        lifeCount.textContent = String(lives);
+        const percentage = Math.min(100, Math.round(player.x / (world - 130) * 100));
+        progressFill.style.width = `${percentage}%`;
+        progressBar.setAttribute('aria-valuenow', String(percentage));
+      }
+      function showDialog(icon, title, copy, buttonText, action) {
+        paused = true;
+        ended = true;
+        document.querySelector('#dialog-icon').textContent = icon;
+        document.querySelector('#dialog-title').textContent = title;
+        document.querySelector('#dialog-copy').textContent = copy;
+        document.querySelector('#play-again').textContent = buttonText;
+        dialogAction = action;
+        overlay.hidden = false;
+        document.querySelector('#play-again').focus();
+      }
+      function startLevel() {
+        input.clear();
+        overlay.hidden = true;
+        paused = false;
+        ended = false;
+      }
+      function loadLevel(index) {
+        stageIndex = index;
+        level = levels[stageIndex];
+        world = level.world;
+        platforms = level.platforms.map(platform => ({
+          ...platform,
+          x: Math.round(platform.x / TILE_SIZE) * TILE_SIZE,
+          w: Math.max(TILE_SIZE * 3, Math.round(platform.w / TILE_SIZE) * TILE_SIZE),
+          rise: PLAYER_HEIGHT + TILE_SIZE + (platform.rise < 61 ? 6 : 18)
+        }));
+        thorns = level.thorns;
+        flowers = level.flowers.map(x => ({ x, taken: false }));
+        enemies = level.enemies.map(enemy => ({ ...enemy, direction: 1, alive: true, phase: enemy.x * 0.03 }));
+        particles = [];
+        lives = 3;
+        checkpointReached = false;
+        checkpoint = 65;
+        collected = 0;
+        elapsed = 0;
+        messageTimer = 0;
+        message = '';
+        camera = 0;
+        resetPlayer();
+        updateHud();
+      }
+      function showLevelIntro() {
+        showDialog('✿', level.name, level.intro, 'Começar fase', startLevel);
+      }
+      function restart() {
+        loadLevel(0);
+        pauseButton.textContent = 'Ⅱ';
+        pauseButton.setAttribute('aria-label', 'Pausar');
+        showLevelIntro();
+      }
+      function finish(won) {
+        if (!won) {
+          showDialog('♡', 'Fim de jornada', 'A floresta pode esperar. Cada fase começa com três novas vidas.', 'Tentar de novo', restart);
+          return;
+        }
+        const finalStage = stageIndex === levels.length - 1;
+        showDialog('✿', finalStage ? 'Um novo começo' : 'Fase concluída!', level.ending, finalStage ? 'Jogar de novo' : 'Próxima fase', () => {
+          if (finalStage) restart();
+          else {
+            loadLevel(stageIndex + 1);
+            showLevelIntro();
+          }
+        });
+        updateHud();
+      }
+      function loseLife(text) {
+        if (invulnerable > 0 || ended) return;
+        lives -= 1;
+        message = text;
+        messageTimer = 1.35;
+        updateHud();
+        if (lives <= 0) {
+          finish(false);
+          return;
+        }
+        resetPlayer();
+      }
+
+      function burst(x, y, color) {
+        for (let i = 0; i < 9; i++) {
+          const angle = (Math.PI * 2 * i) / 9;
+          const speed = 42 + (i % 3) * 16;
+          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.48, color });
+        }
+      }
+      function keyDown(event) {
+        const key = event.key.toLowerCase();
+        if (['arrowleft', 'arrowright', 'arrowup', ' ', 'w', 'a', 'd'].includes(key)) event.preventDefault();
+        if (['arrowleft', 'a'].includes(key)) input.add('left');
+        if (['arrowright', 'd'].includes(key)) input.add('right');
+        if (['arrowup', 'w', ' '].includes(key)) input.add('jump');
+        if (key === 'p' && !event.repeat) togglePause();
+        if (key === 'r' && !event.repeat) restart();
+      }
+      function keyUp(event) {
+        const key = event.key.toLowerCase();
+        if (['arrowleft', 'a'].includes(key)) input.delete('left');
+        if (['arrowright', 'd'].includes(key)) input.delete('right');
+        if (['arrowup', 'w', ' '].includes(key)) input.delete('jump');
+      }
+      function togglePause() {
+        if (ended) return;
+        paused = !paused;
+        pauseButton.textContent = paused ? '▶' : 'Ⅱ';
+        pauseButton.setAttribute('aria-label', paused ? 'Continuar' : 'Pausar');
+        if (!paused) pauseButton.setAttribute('title', 'Pausar');
+        else pauseButton.setAttribute('title', 'Continuar');
+      }
+
+      function update(dt) {
+        if (paused || ended) return;
+        elapsed += dt;
+        invulnerable = Math.max(0, invulnerable - dt);
+        messageTimer = Math.max(0, messageTimer - dt);
+        particles = particles.filter(particle => {
+          particle.life -= dt;
+          particle.x += particle.vx * dt;
+          particle.y += particle.vy * dt;
+          particle.vy += 110 * dt;
+          return particle.life > 0;
+        });
+        const horizontal = Number(input.has('right')) - Number(input.has('left'));
+        player.vx = horizontal * 235;
+        if (horizontal) {
+          player.facing = horizontal;
+          player.walk += dt * 12;
+        }
+        if (input.has('jump') && player.grounded) {
+          player.vy = -500;
+          player.grounded = false;
+        }
+        const previousBottom = player.y + PLAYER_HEIGHT;
+        player.x = Math.max(0, Math.min(world - 75, player.x + player.vx * dt));
+        player.vy = Math.min(720, player.vy + 1280 * dt);
+        player.y += player.vy * dt;
+        player.grounded = false;
+
+        const ground = floorY();
+        for (const platform of platforms) {
+          const top = ground - platform.rise;
+          const overlaps = player.x + PLAYER_WIDTH > platform.x && player.x < platform.x + platform.w;
+          if (overlaps && previousBottom <= top + 3 && player.y + PLAYER_HEIGHT >= top && player.vy >= 0) {
+            player.y = top - PLAYER_HEIGHT;
+            player.vy = 0;
+            player.grounded = true;
+          }
+        }
+        if (player.y + PLAYER_HEIGHT >= ground) {
+          player.y = ground - PLAYER_HEIGHT;
+          player.vy = 0;
+          player.grounded = true;
+        }
+        if (player.y > height + 90) {
+          loseLife('Quase! Tente outra vez.');
+          return;
+        }
+
+        let changed = false;
+        for (const flower of flowers) {
+          if (!flower.taken && Math.abs((player.x + PLAYER_WIDTH / 2) - flower.x) < 28 && Math.abs((player.y + 20) - (ground - 112)) < 40) {
+            flower.taken = true;
+            collected += 1;
+            changed = true;
+            burst(flower.x, ground - 112, '#f5c65b');
+          }
+        }
+        if (player.x > level.checkpoint && !checkpointReached) {
+          checkpoint = level.checkpoint + 10;
+          checkpointReached = true;
+          message = 'Marco alcançado!';
+          messageTimer = 1.5;
+        }
+        if (changed) updateHud();
+
+        for (const enemy of enemies) {
+          if (!enemy.alive) continue;
+          enemy.x += enemy.speed * enemy.direction * dt;
+          if (enemy.x < enemy.min || enemy.x > enemy.max) {
+            enemy.direction *= -1;
+            enemy.x = Math.max(enemy.min, Math.min(enemy.max, enemy.x));
+          }
+          const box = enemyBox(enemy, ground, elapsed);
+          const overlaps = player.x + PLAYER_WIDTH - 5 > box.x && player.x + 5 < box.x + box.width;
+          if (!overlaps || player.y + PLAYER_HEIGHT < box.y || player.y > box.y + box.height) continue;
+          if (player.vy > 0 && previousBottom <= box.y + 10) {
+            enemy.alive = false;
+            enemy.killedAt = elapsed;
+            player.y = box.y - PLAYER_HEIGHT + 4;
+            player.vy = -300;
+            player.grounded = false;
+            burst(box.x + box.width / 2, box.y + box.height / 2, '#b7d989');
+            message = 'Pulo certeiro!';
+            messageTimer = 0.7;
+          } else {
+            loseLife('Um inimigo te pegou!');
+            return;
+          }
+        }
+
+        for (const thorn of thorns) {
+          if (player.x + PLAYER_WIDTH - 4 > thorn && player.x + 4 < thorn + 38 && player.y + PLAYER_HEIGHT > ground - 27) {
+            loseLife('Espinhos!');
+            return;
+          }
+        }
+        const breathActive = elapsed % 4.1 < 1.18;
+        const dragonX = level.dragonX;
+        const touchingDragon = dragonX !== null && player.x + PLAYER_WIDTH > dragonX - 49 && player.x < dragonX + 40 && player.y + PLAYER_HEIGHT > ground - 58;
+        const inFlame = dragonX !== null && breathActive && player.x + PLAYER_WIDTH > dragonX - 205 && player.x < dragonX - 48 && player.y + PLAYER_HEIGHT > ground - 35;
+        if (touchingDragon || inFlame) {
+          loseLife('O dragão espirrou fogo!');
+          return;
+        }
+        if (player.x > world - 180) {
+          if (collected === 3) finish(true);
+          else {
+            player.x = world - 210;
+            message = `Faltam ${3 - collected} chave(s) de flor.`;
+            messageTimer = 1.8;
+          }
+        }
+        const targetCamera = Math.max(0, Math.min(world - width, player.x - width * 0.34));
+        camera += (targetCamera - camera) * Math.min(1, dt * 7);
+        updateHud();
+      }
+
+      function drawBackground() {
+        const theme = level.theme;
+        const sky = ctx.createLinearGradient(0, 0, 0, height);
+        sky.addColorStop(0, theme.sky[0]);
+        sky.addColorStop(1, theme.sky[1]);
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, width, height);
+        if (level.biome !== 'cave' && level.biome !== 'mines') {
+          const sunX = width * 0.79;
+          const sunY = height * 0.2;
+          const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, Math.min(116, width * 0.19));
+          glow.addColorStop(0, '#fff4cb88');
+          glow.addColorStop(1, '#fff4cb00');
+          ctx.fillStyle = glow;
+          ctx.fillRect(sunX - 120, sunY - 120, 240, 240);
+          ctx.fillStyle = theme.sun;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, Math.min(34, height * 0.12), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (level.biome === 'forest') {
+          for (let i = -1; i < 8; i++) {
+            const x = i * 180 - (camera * 0.16 % 180);
+            const peak = height * 0.38 + (i % 3) * 24;
+            ctx.fillStyle = i % 2 ? theme.hills : theme.hillsAlt;
+            ctx.beginPath(); ctx.moveTo(x - 100, floorY()); ctx.lineTo(x + 50, peak); ctx.lineTo(x + 190, floorY()); ctx.fill();
+          }
+          for (let i = -1; i < 12; i++) {
+            const x = i * 115 - (camera * 0.34 % 115);
+            const base = floorY() + 2;
+            ctx.fillStyle = theme.trees;
+            ctx.fillRect(x + 23, base - 63, 8, 66);
+            ctx.fillStyle = i % 2 ? theme.trees : theme.treesAlt;
+            ctx.beginPath(); ctx.arc(x + 27, base - 69, 29, 0, Math.PI * 2); ctx.arc(x + 8, base - 54, 19, 0, Math.PI * 2); ctx.arc(x + 46, base - 52, 20, 0, Math.PI * 2); ctx.fill();
+          }
+          for (let i = 0; i < 7; i++) {
+            const x = (i * 173 + elapsed * 22) % (width + 30);
+            ctx.fillStyle = '#fff2a8'; ctx.fillRect(x, 70 + (i % 3) * 39 + Math.sin(elapsed * 2 + i) * 7, 4, 4);
+          }
+        } else if (level.biome === 'sky') {
+          for (let i = 0; i < 7; i++) {
+            const x = (i * 190 - elapsed * (10 + i % 3 * 5) + width + 220) % (width + 220) - 110;
+            const y = 58 + (i % 4) * 47;
+            ctx.fillStyle = '#f7fff0cc';
+            ctx.beginPath(); ctx.ellipse(x, y, 45, 12, 0, 0, Math.PI * 2); ctx.ellipse(x - 18, y - 9, 20, 15, 0, 0, Math.PI * 2); ctx.ellipse(x + 12, y - 12, 24, 19, 0, 0, Math.PI * 2); ctx.fill();
+          }
+          for (let i = 0; i < 4; i++) {
+            const x = i * 280 - (camera * 0.12 % 280) + 40;
+            const y = height * 0.47 + i % 2 * 31;
+            ctx.fillStyle = '#719f9a'; ctx.beginPath(); ctx.moveTo(x - 55, y); ctx.lineTo(x, y + 24); ctx.lineTo(x + 58, y); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#93ba9c'; ctx.fillRect(x - 30, y - 5, 60, 7);
+          }
+        } else if (level.biome === 'mines') {
+          for (let i = 0; i < 9; i++) {
+            const x = i * 145 - (camera * 0.18 % 145);
+            const y = height * 0.43 + (i % 3) * 24;
+            ctx.fillStyle = i % 2 ? '#769c8a' : '#a2ae82';
+            ctx.beginPath(); ctx.moveTo(x, y + 36); ctx.lineTo(x + 16, y - 8); ctx.lineTo(x + 31, y + 36); ctx.lineTo(x + 16, y + 48); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#e6d19a'; ctx.fillRect(x + 14, y + 4, 3, 15);
+          }
+          for (let i = 0; i < 5; i++) {
+            const x = i * 220 - (camera * 0.1 % 220) + 90;
+            ctx.fillStyle = '#4d5b4b'; ctx.fillRect(x, height * 0.25, 18, height * 0.42);
+            ctx.fillStyle = '#e6bd68'; ctx.beginPath(); ctx.arc(x + 9, height * 0.32, 12 + Math.sin(elapsed * 3 + i) * 2, 0, Math.PI * 2); ctx.fill();
+          }
+        } else if (level.biome === 'mountain') {
+          for (let i = -1; i < 7; i++) {
+            const x = i * 190 - (camera * 0.14 % 190);
+            const peak = height * 0.2 + (i % 3) * 29;
+            ctx.fillStyle = i % 2 ? '#86adb0' : '#a5c5c0';
+            ctx.beginPath(); ctx.moveTo(x - 100, floorY()); ctx.lineTo(x + 48, peak); ctx.lineTo(x + 190, floorY()); ctx.fill();
+            ctx.fillStyle = '#f3f2dc'; ctx.beginPath(); ctx.moveTo(x + 20, peak + 34); ctx.lineTo(x + 48, peak); ctx.lineTo(x + 76, peak + 35); ctx.lineTo(x + 54, peak + 27); ctx.lineTo(x + 43, peak + 32); ctx.closePath(); ctx.fill();
+          }
+          for (let i = 0; i < 5; i++) {
+            const x = (i * 230 + elapsed * 95) % (width + 200) - 100;
+            const y = 85 + i * 29;
+            ctx.strokeStyle = '#eff7e5aa'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 34, y - 5); ctx.lineTo(x + 82, y); ctx.stroke();
+          }
+        } else {
+          ctx.fillStyle = '#393b35'; ctx.fillRect(0, 0, width, 58);
+          for (let i = 0; i < 11; i++) {
+            const x = i * 105 - (camera * 0.1 % 105);
+            const length = 24 + (i % 4) * 13;
+            ctx.fillStyle = i % 2 ? '#51483d' : '#5c4939';
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 18, 0); ctx.lineTo(x + 9, length); ctx.closePath(); ctx.fill();
+          }
+          for (let i = 0; i < 5; i++) {
+            const x = i * 220 - (camera * 0.13 % 220) + 70;
+            const y = height * 0.71 + Math.sin(elapsed * 1.7 + i) * 5;
+            ctx.fillStyle = '#db7545'; ctx.fillRect(x, y, 72, 5);
+            ctx.fillStyle = '#ffd16f'; ctx.fillRect(x + 12, y - 3, 34, 3);
+          }
+          for (let i = 0; i < 9; i++) {
+            const x = i * 132 - (camera * 0.24 % 132);
+            const y = 95 + (i % 4) * 34 + Math.sin(elapsed * 2 + i) * 5;
+            ctx.fillStyle = '#ffb65b'; ctx.fillRect(x, y, 3, 3);
+          }
+        }
+        ctx.fillStyle = theme.detail;
+        ctx.fillRect(0, floorY(), width, height - floorY());
+        const vignette = ctx.createRadialGradient(width / 2, height * 0.43, height * 0.1, width / 2, height * 0.45, width * 0.78);
+        vignette.addColorStop(0, '#19352b00');
+        vignette.addColorStop(1, '#19352b35');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function drawGround() {
+        const ground = floorY();
+        ctx.fillStyle = level.theme.ground;
+        ctx.fillRect(0, ground, world, height - ground + 6);
+        ctx.fillStyle = level.theme.grass;
+        ctx.fillRect(0, ground, world, 8);
+        ctx.fillStyle = level.theme.detail;
+        for (let x = 12; x < world; x += 47) ctx.fillRect(x, ground + 15 + (x % 3) * 7, 15, 4);
+        for (const platform of platforms) {
+          const top = ground - platform.rise;
+          ctx.fillStyle = level.theme.ground;
+          ctx.fillRect(platform.x, top + 8, platform.w, TILE_SIZE - 8);
+          ctx.fillStyle = level.theme.grass;
+          ctx.fillRect(platform.x - 2, top, platform.w + 4, 8);
+          ctx.fillStyle = level.theme.detail;
+          for (let x = platform.x + 3; x < platform.x + platform.w - 5; x += TILE_SIZE) {
+            ctx.fillRect(x, top + 2, TILE_SIZE - 7, 2);
+          }
+          ctx.fillStyle = '#253c3338';
+          for (let x = platform.x + TILE_SIZE; x < platform.x + platform.w; x += TILE_SIZE) {
+            ctx.fillRect(x, top + 8, 1, TILE_SIZE - 8);
+          }
+        }
+      }
+
+      function drawFlower(x, y, time) {
+        const bob = Math.sin(time * 4 + x) * 4;
+        const pulse = 0.6 + Math.sin(time * 5 + x) * 0.12;
+        ctx.save();
+        ctx.translate(x, y + bob);
+        const halo = ctx.createRadialGradient(0, 0, 1, 0, 0, 23 * pulse);
+        halo.addColorStop(0, '#fff4bd99');
+        halo.addColorStop(1, '#fff4bd00');
+        ctx.fillStyle = halo;
+        ctx.fillRect(-25, -25, 50, 50);
+        ctx.fillStyle = '#e8a846';
+        for (let petal = 0; petal < 5; petal++) {
+          const angle = petal * Math.PI * 0.4;
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(angle) * 8, Math.sin(angle) * 8, 6, 4, angle, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ffe58a';
+        ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff8d7';
+        ctx.fillRect(-1, -2, 2, 2);
+        ctx.fillStyle = '#91ae65';
+        ctx.fillRect(-2, 10, 4, 7);
+        ctx.fillRect(-7, 12, 5, 2);
+        ctx.fillRect(2, 14, 5, 2);
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        for (const particle of particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, particle.life / 0.48);
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(elapsed * 5);
+          ctx.fillStyle = particle.color;
+          ctx.fillRect(-2, -2, 4, 4);
+          ctx.fillRect(-1, -5, 2, 10);
+          ctx.fillRect(-5, -1, 10, 2);
+          ctx.restore();
+        }
+      }
+
+      function drawThorns(ground) {
+        for (const thorn of thorns) {
+          ctx.fillStyle = '#355c43';
+          for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(thorn + i * 10, ground);
+            ctx.lineTo(thorn + 5 + i * 10, ground - (i % 2 ? 17 : 23));
+            ctx.lineTo(thorn + 10 + i * 10, ground);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#db7865';
+          ctx.fillRect(thorn + 17, ground - 10, 3, 3);
+        }
+      }
+
+      function enemyBox(enemy, ground, time) {
+        const width = enemy.airborne ? 34 : 36;
+        const height = enemy.airborne ? 27 : 29;
+        const bob = enemy.airborne ? Math.sin(time * 3 + enemy.phase) * 17 : 0;
+        return { x: enemy.x, y: ground - height - (enemy.airborne ? 92 + bob : 0), width, height };
+      }
+
+      function drawEnemies(ground, time) {
+        for (const enemy of enemies) {
+          if (!enemy.alive && time - enemy.killedAt > 0.2) continue;
+          const box = enemyBox(enemy, ground, time);
+          ctx.save();
+          ctx.translate(box.x, box.y);
+          if (!enemy.alive) {
+            ctx.fillStyle = '#51404a'; ctx.beginPath(); ctx.ellipse(18, 25, 17, 4, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+          }
+          if (enemy.type === 'moss') {
+            ctx.fillStyle = '#53845a'; ctx.beginPath(); ctx.ellipse(18, 18, 17, 12, 0, Math.PI, Math.PI * 2); ctx.fillRect(1, 18, 34, 8); ctx.fill();
+            ctx.fillStyle = '#f5e7bd'; ctx.fillRect(10, 13, 6, 7); ctx.fillRect(22, 13, 6, 7); ctx.fillStyle = '#263a32'; ctx.fillRect(13, 16, 3, 4); ctx.fillRect(23, 16, 3, 4);
+          } else if (enemy.type === 'cloudling') {
+            ctx.fillStyle = '#fff3dc'; ctx.beginPath(); ctx.arc(11, 18, 10, 0, Math.PI * 2); ctx.arc(22, 14, 12, 0, Math.PI * 2); ctx.arc(29, 20, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#547c73'; ctx.fillRect(14, 16, 3, 4); ctx.fillRect(23, 16, 3, 4); ctx.fillStyle = '#e98570'; ctx.fillRect(18, 23, 7, 2);
+          } else if (enemy.type === 'bat') {
+            ctx.fillStyle = '#45434b'; ctx.beginPath(); ctx.moveTo(17, 14); ctx.lineTo(0, 2 + Math.sin(time * 16 + enemy.phase) * 5); ctx.lineTo(5, 23); ctx.lineTo(17, 19); ctx.lineTo(29, 23); ctx.lineTo(34, 2 - Math.sin(time * 16 + enemy.phase) * 5); ctx.lineTo(19, 14); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#f6d77d'; ctx.fillRect(12, 14, 3, 3); ctx.fillRect(21, 14, 3, 3);
+          } else if (enemy.type === 'goat') {
+            ctx.fillStyle = '#a98c68'; ctx.fillRect(4, 9, 27, 17); ctx.fillRect(23, 5, 12, 13);
+            ctx.fillStyle = '#f4ead2'; ctx.fillRect(27, 1, 3, 7); ctx.fillRect(33, 2, 3, 6); ctx.fillStyle = '#453b34'; ctx.fillRect(30, 9, 2, 2); ctx.fillRect(8, 24, 4, 5); ctx.fillRect(24, 24, 4, 5);
+          } else {
+            ctx.fillStyle = '#dc7546'; ctx.fillRect(2, 10, 31, 15); ctx.fillRect(23, 5, 12, 13);
+            ctx.fillStyle = '#f5ca68'; ctx.fillRect(9, 7, 4, 5); ctx.fillRect(18, 7, 4, 5); ctx.fillRect(27, 10, 3, 3); ctx.fillStyle = '#593e35'; ctx.fillRect(30, 12, 2, 2); ctx.fillRect(7, 24, 5, 5); ctx.fillRect(24, 24, 5, 5);
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawDragon(x, ground, time) {
+        const bob = Math.sin(time * 2) * 2;
+        const wing = Math.sin(time * 6) * 8;
+        ctx.save();
+        ctx.translate(x, ground - 10 + bob);
+        ctx.fillStyle = '#35483a';
+        ctx.beginPath(); ctx.ellipse(-3, -1, 43, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#4b704f';
+        ctx.beginPath(); ctx.moveTo(-8, -47); ctx.lineTo(-25, -82 - wing); ctx.lineTo(1, -65); ctx.lineTo(20, -89 - wing); ctx.lineTo(19, -48); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#779a64';
+        ctx.beginPath(); ctx.moveTo(-14, -52); ctx.lineTo(-24, -75 - wing); ctx.lineTo(-1, -61); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#557c55';
+        ctx.beginPath();
+        ctx.ellipse(-4, -36, 38, 28, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#9daf70';
+        ctx.beginPath(); ctx.ellipse(-3, -27, 24, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#849963';
+        for (let plate = 0; plate < 4; plate++) {
+          ctx.beginPath(); ctx.arc(-18 + plate * 11, -28, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#749762';
+        ctx.beginPath();
+        ctx.ellipse(-34, -57, 19, 22, -0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#91b06d';
+        ctx.beginPath();
+        ctx.ellipse(-48, -57, 14, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f6dc87';
+        ctx.fillRect(-57, -62, 7, 7);
+        ctx.fillStyle = '#293a34';
+        ctx.fillRect(-55, -60, 3, 4);
+        ctx.fillStyle = '#fff1b1';
+        ctx.fillRect(-54, -60, 1, 1);
+        ctx.fillRect(-44, -76, 5, 13);
+        ctx.fillRect(-65, -71, 5, 12);
+        ctx.fillStyle = '#577c54';
+        ctx.beginPath();
+        ctx.moveTo(-11, -54); ctx.lineTo(7, -99); ctx.lineTo(24, -56);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#b7bd70';
+        ctx.beginPath();
+        ctx.moveTo(-2, -66); ctx.lineTo(7, -88); ctx.lineTo(15, -62);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#466a4b';
+        ctx.fillRect(-24, -18, 12, 18);
+        ctx.fillRect(9, -18, 12, 18);
+        ctx.fillStyle = '#d1b873';
+        ctx.fillRect(-24, -5, 12, 4);
+        ctx.fillRect(9, -5, 12, 4);
+        ctx.fillStyle = '#f1c86e';
+        ctx.fillRect(-57, -49, 2, 2);
+        if (time % 4.1 < 1.18) {
+          const flame = ctx.createLinearGradient(-62, -42, -214, -42);
+          flame.addColorStop(0, '#ffda74');
+          flame.addColorStop(0.45, '#f29248');
+          flame.addColorStop(1, '#e36342');
+          ctx.fillStyle = flame;
+          ctx.beginPath();
+          ctx.moveTo(-59, -53); ctx.lineTo(-216, -43); ctx.lineTo(-59, -30);
+          ctx.fill();
+          ctx.fillStyle = '#f7c962';
+          ctx.beginPath();
+          ctx.moveTo(-60, -48); ctx.lineTo(-162, -42); ctx.lineTo(-60, -36);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawCage(x, ground, time) {
+        const bob = Math.sin(time * 5) * 1.5;
+        ctx.fillStyle = '#8a5c3e';
+        ctx.fillRect(x, ground - 56, 48, 56);
+        ctx.fillStyle = '#b77949';
+        ctx.fillRect(x - 5, ground - 60, 58, 7);
+        ctx.fillStyle = '#f0d0a0';
+        ctx.fillRect(x + 15, ground - 31 + bob, 17, 20);
+        ctx.fillStyle = '#3e5140';
+        ctx.fillRect(x + 18, ground - 43 + bob, 12, 13);
+        ctx.fillStyle = '#dbb583';
+        ctx.fillRect(x + 17, ground - 50 + bob, 14, 12);
+        ctx.fillStyle = '#836248';
+        ctx.fillRect(x + 11, ground - 39 + bob, 4, 21);
+        ctx.fillRect(x + 32, ground - 39 + bob, 4, 21);
+        ctx.fillStyle = '#f4c95f';
+        ctx.fillRect(x + 20, ground - 47 + bob, 2, 2);
+        ctx.fillRect(x + 27, ground - 47 + bob, 2, 2);
+        ctx.fillStyle = '#d4d4ac';
+        ctx.fillRect(x + 5, ground - 54, 3, 51);
+        ctx.fillRect(x + 39, ground - 54, 3, 51);
+        ctx.fillRect(x + 24, ground - 54, 3, 51);
+        ctx.fillRect(x + 5, ground - 34, 37, 3);
+      }
+
+      function drawGate(x, ground) {
+        ctx.fillStyle = '#80513c';
+        ctx.fillRect(x, ground - 70, 50, 70);
+        ctx.fillStyle = '#e8d68c';
+        ctx.beginPath();
+        ctx.moveTo(x + 7, ground);
+        ctx.lineTo(x + 7, ground - 38);
+        ctx.arc(x + 25, ground - 38, 18, Math.PI, 0);
+        ctx.lineTo(x + 43, ground);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#d46661';
+        ctx.fillRect(x + 23, ground - 24, 4, 5);
+      }
+
+      function drawPrincess(time) {
+        if (invulnerable > 0 && Math.floor(time * 16) % 2) return;
+        const stride = player.grounded && Math.abs(player.vx) > 1 ? Math.sin(player.walk) * 4 : 0;
+        const arm = player.grounded && Math.abs(player.vx) > 1 ? Math.sin(player.walk) * 3 : 0;
+        const cape = Math.sin(time * 8) * 2;
+        const x = player.x;
+        const y = player.y;
+        ctx.save();
+        if (player.facing < 0) {
+          ctx.translate(x * 2 + PLAYER_WIDTH, 0);
+          ctx.scale(-1, 1);
+        }
+        const shadowSize = Math.max(0.35, 1 - Math.max(0, floorY() - y - PLAYER_HEIGHT) / 150);
+        ctx.fillStyle = '#233b3244';
+        ctx.beginPath();
+        ctx.ellipse(x + 15, floorY(), 14 * shadowSize, 3 * shadowSize, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#7f4050';
+        ctx.fillRect(x + 5, y + 19 + cape, 7, 16);
+        ctx.fillRect(x + 1, y + 27 + cape, 8, 5);
+        ctx.fillStyle = '#563c45';
+        ctx.fillRect(x + 7, y + 1, 18, 9);
+        ctx.fillRect(x + 5, y + 7, 9, 18);
+        ctx.fillRect(x + 21, y + 8, 8, 13);
+        ctx.fillStyle = '#df8d69';
+        ctx.fillRect(x + 13, y + 8, 15, 15);
+        ctx.fillStyle = '#f2a982';
+        ctx.fillRect(x + 15, y + 9, 9, 2);
+        ctx.fillStyle = '#4b3d43';
+        ctx.fillRect(x + 22, y + 13, 3, 3);
+        ctx.fillStyle = '#fff4d5';
+        ctx.fillRect(x + 22, y + 13, 1, 1);
+        ctx.fillStyle = '#eebd57';
+        ctx.fillRect(x + 13, y + 2, 4, 5);
+        ctx.fillRect(x + 13, y, 2, 3);
+        ctx.fillRect(x + 17, y + 1, 2, 3);
+        ctx.fillRect(x + 20, y, 2, 3);
+        ctx.fillStyle = '#d46661';
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y + 22);
+        ctx.lineTo(x + 25, y + 22);
+        ctx.lineTo(x + 32, y + 38);
+        ctx.lineTo(x + 4, y + 38);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ed8a72';
+        ctx.fillRect(x + 14, y + 24, 11, 3);
+        ctx.fillStyle = '#f5d47d';
+        ctx.fillRect(x + 8, y + 34, 20, 3);
+        ctx.fillRect(x + 5, y + 37, 27, 3);
+        ctx.fillStyle = '#df8d69';
+        ctx.fillRect(x + 9, y + 23 + arm, 4, 10);
+        ctx.fillRect(x + 26, y + 23 - arm, 4, 10);
+        ctx.fillStyle = '#f6d89a';
+        ctx.fillRect(x + 8, y + 31 + arm, 6, 3);
+        ctx.fillRect(x + 25, y + 31 - arm, 6, 3);
+        ctx.fillStyle = '#f0bd59';
+        ctx.fillRect(x + 16, y + 27, 5, 4);
+        ctx.fillStyle = '#fff0ae';
+        ctx.fillRect(x + 17, y + 28, 2, 2);
+        ctx.fillStyle = '#51404a';
+        ctx.fillRect(x + 9, y + 38 + stride, 7, 6);
+        ctx.fillRect(x + 22, y + 38 - stride, 7, 6);
+        ctx.fillStyle = '#f0bd59';
+        ctx.fillRect(x + 6, y + 42 + stride, 12, 3);
+        ctx.fillRect(x + 19, y + 42 - stride, 12, 3);
+        ctx.restore();
+      }
+
+      function draw(time) {
+        drawBackground();
+        ctx.save();
+        ctx.translate(-Math.round(camera), 0);
+        drawGround();
+        const ground = floorY();
+        drawThorns(ground);
+        for (const flower of flowers) if (!flower.taken) drawFlower(flower.x, ground - 112, time);
+        drawEnemies(ground, elapsed);
+        drawParticles();
+        if (level.dragonX !== null) {
+          drawDragon(level.dragonX, ground, elapsed);
+          drawCage(world - 135, ground, time);
+        } else drawGate(world - 125, ground);
+        drawPrincess(time);
+        ctx.restore();
+        if (paused && !ended) {
+          ctx.fillStyle = '#1e392b88';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#fff9e9';
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 24px Georgia, serif';
+          ctx.fillText('Pausa', width / 2, height / 2);
+        } else if (messageTimer > 0 && !ended) {
+          ctx.font = 'bold 11px ui-monospace, monospace';
+          const textWidth = ctx.measureText(message).width;
+          ctx.fillStyle = '#fff9e9';
+          ctx.fillRect(width / 2 - textWidth / 2 - 12, 16, textWidth + 24, 28);
+          ctx.strokeStyle = '#233b32';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(width / 2 - textWidth / 2 - 12, 16, textWidth + 24, 28);
+          ctx.fillStyle = '#233b32';
+          ctx.textAlign = 'center';
+          ctx.fillText(message, width / 2, 34);
+        }
+      }
+
+      function frame(timestamp) {
+        const dt = Math.min((timestamp - (lastTime || timestamp)) / 1000, 0.034);
+        lastTime = timestamp;
+        update(dt);
+        draw(timestamp / 1000);
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener('keydown', keyDown);
+      window.addEventListener('keyup', keyUp);
+      window.addEventListener('blur', () => input.clear());
+      window.addEventListener('resize', resize);
+      document.querySelectorAll('[data-control]').forEach(button => {
+        const control = button.dataset.control;
+        button.addEventListener('pointerdown', event => {
+          event.preventDefault();
+          input.add(control);
+          button.setPointerCapture(event.pointerId);
+        });
+        const release = () => input.delete(control);
+        button.addEventListener('pointerup', release);
+        button.addEventListener('pointercancel', release);
+        button.addEventListener('lostpointercapture', release);
+      });
+      pauseButton.addEventListener('click', togglePause);
+      document.querySelector('#restart-button').addEventListener('click', restart);
+      document.querySelector('#play-again').addEventListener('click', () => dialogAction());
+      resize();
+      loadLevel(0);
+      showLevelIntro();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
